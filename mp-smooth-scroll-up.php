@@ -9,8 +9,8 @@
   Tags: back to top, scroll to top, scroll, scroll top, scroll back to top, scroll up, arrow, link to top, back to top, smooth scroll, top, up, back, navigation
   Requires at least: 3.2
   Tested up to: 4.1.1
-  Stable tag: 1.0.0.0
-  Version: 1.0.0.0
+  Stable tag: 1.0.0.1
+  Version: 1.0.0.1
   License: GPLv2 or later
   Description: Smooth Scroll Up is a lightweight plugin that creates a customizable "Scroll to top / Back to top" feature in any post/page of your WordPress website.
 
@@ -32,167 +32,278 @@
   This plugin is an exact duplicate of the Smooth Scroll Up plugin on the WordPress repo - but with the main plugin filename changed because the plugin filename in the original is just "plugin.php" which is much to general and could lead to problems. We also do a check in this plugin to make sure the original is not already installed.
  */
 
-function mp_create_scroll_up_class(){
-	if ( !class_exists( 'ScrollUp' ) ){
-		define( 'SMTH_SCRL_UP_PLUGIN_DIR', 'smooth-scroll-up' );
-		define( 'SMTH_SCRL_UP_PLUGIN_NAME', 'Smooth Scroll Up' );
+/*
+|--------------------------------------------------------------------------
+| CONSTANTS
+|--------------------------------------------------------------------------
+*/
+// Plugin version
+if( !defined( 'MP_SMOOTH_SCROLL_UP_VERSION' ) )
+	define( 'MP_SMOOTH_SCROLL_UP_VERSION', '1.0.0.1' );
+
+// Plugin Folder URL
+if( !defined( 'MP_SMOOTH_SCROLL_UP_PLUGIN_URL' ) )
+	define( 'MP_SMOOTH_SCROLL_UP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+// Plugin Folder Path
+if( !defined( 'MP_SMOOTH_SCROLL_UP_PLUGIN_DIR' ) )
+	define( 'MP_SMOOTH_SCROLL_UP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+
+// Plugin Root File
+if( !defined( 'MP_SMOOTH_SCROLL_UP_PLUGIN_FILE' ) )
+	define( 'MP_SMOOTH_SCROLL_UP_PLUGIN_FILE', __FILE__ );
+
+/*
+|--------------------------------------------------------------------------
+| GLOBALS
+|--------------------------------------------------------------------------
+*/
+
+
+
+/*
+|--------------------------------------------------------------------------
+| INTERNATIONALIZATION
+|--------------------------------------------------------------------------
+*/
+
+function mp_smooth_scroll_up_textdomain() {
+
+	// Set filter for plugin's languages directory
+	$mp_smooth_scroll_up_lang_dir = dirname( plugin_basename( MP_SMOOTH_SCROLL_UP_PLUGIN_FILE ) ) . '/languages/';
+	$mp_smooth_scroll_up_lang_dir = apply_filters( 'mp_smooth_scroll_up_languages_directory', $mp_smooth_scroll_up_lang_dir );
+
+
+	// Traditional WordPress plugin locale filter
+	$locale        = apply_filters( 'plugin_locale',  get_locale(), 'mp-smooth-scroll-up' );
+	$mofile        = sprintf( '%1$s-%2$s.mo', 'mp-smooth-scroll-up', $locale );
+
+	// Setup paths to current locale file
+	$mofile_local  = $mp_smooth_scroll_up_lang_dir . $mofile;
+	$mofile_global = WP_LANG_DIR . '/mp-smooth-scroll-up/' . $mofile;
+
+	if ( file_exists( $mofile_global ) ) {
+		// Look in global /wp-content/languages/mp_smooth_scroll_up folder
+		load_textdomain( 'mp_smooth_scroll_up', $mofile_global );
+	} elseif ( file_exists( $mofile_local ) ) {
+		// Look in local /wp-content/plugins/mp_smooth_scroll_up/languages/ folder
+		load_textdomain( 'mp_smooth_scroll_up', $mofile_local );
+	} else {
+		// Load the default language files
+		load_plugin_textdomain( 'mp_smooth_scroll_up', false, $mp_smooth_scroll_up_lang_dir );
+	}
+
+}
+add_action( 'init', 'mp_smooth_scroll_up_textdomain', 1 );
+
+/*
+|--------------------------------------------------------------------------
+| INCLUDES
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Load files dependant on MP Core - if no MP Core, output a button to install it first
+ */
+function mp_smooth_scroll_up_include_files(){
+	/**
+	 * If mp_core isn't active, stop and install it now
+	 */
+	if (!function_exists('mp_core_textdomain')){
 		
-		class ScrollUp {
+		/**
+		 * Include Plugin Checker
+		 */
+		require( MP_SMOOTH_SCROLL_UP_PLUGIN_DIR . '/includes/plugin-checker/class-plugin-checker.php' );
 		
-			private $detector;
-			private $settings;
+		/**
+		 * Include Plugin Installer
+		 */
+		require( MP_SMOOTH_SCROLL_UP_PLUGIN_DIR . '/includes/plugin-checker/class-plugin-installer.php' );
 		
-			/* -------------------------------------------------- */
-			/* Constructor
-			  /*-------------------------------------------------- */
+		/**
+		 * Check if mp_core in installed
+		 */
+		require( MP_SMOOTH_SCROLL_UP_PLUGIN_DIR . 'includes/plugin-checker/included-plugins/mp-core-check.php' );
 		
-			public function __construct() {
+	}
+	/**
+	 * Otherwise, if mp_core is active, carry out the plugin's functions
+	 */
+	else{
+		
+		/**
+		 * Update script - keeps this plugin up to date
+		 */
+		require( MP_SMOOTH_SCROLL_UP_PLUGIN_DIR . 'includes/updater/mp-smooth-scroll-up-update.php' );
+		
+		
+		//This makes sure we dont get conflicts if the original plugin is installed.
+		function mp_create_scroll_up_class(){
+			if ( !class_exists( 'ScrollUp' ) ){
+				define( 'SMTH_SCRL_UP_PLUGIN_DIR', 'smooth-scroll-up' );
+				define( 'SMTH_SCRL_UP_PLUGIN_NAME', 'Smooth Scroll Up' );
 				
-				//Load localisation files
-				load_plugin_textdomain('scrollup',false,dirname( plugin_basename( __FILE__ ) ) . '/languages');
-		
-				//Mobile detection library
-				if(!class_exists('Mobile_Detect')){
-					require_once( plugin_dir_path(__FILE__) . '/lib/Mobile_Detect.php' );
-				}		
-				$this->detector = new Mobile_Detect;
-		
-				//Options Page
-				require_once( plugin_dir_path(__FILE__) . '/lib/options.php' );
+				class ScrollUp {
 				
-				//Fetch settings
-				$this->settings = get_option('scrollup_settings');
+					private $detector;
+					private $settings;
 				
-				$scrollup_mobile = ($this->settings['scrollup_mobile'] ? $this->settings['scrollup_mobile'] : '0');
-				if (!($scrollup_mobile == 0 && ($this->detector->isMobile() || $this->detector->isIphone()))) {
+					/* -------------------------------------------------- */
+					/* Constructor
+					  /*-------------------------------------------------- */
+				
+					public function __construct() {
+						
+						//Load localisation files
+						load_plugin_textdomain('scrollup',false,dirname( plugin_basename( __FILE__ ) ) . '/languages');
+				
+						//Mobile detection library
+						if(!class_exists('Mobile_Detect')){
+							require_once( plugin_dir_path(__FILE__) . '/lib/Mobile_Detect.php' );
+						}		
+						$this->detector = new Mobile_Detect;
+				
+						//Options Page
+						require_once( plugin_dir_path(__FILE__) . '/lib/options.php' );
+						
+						//Fetch settings
+						$this->settings = get_option('scrollup_settings');
+						
+						$scrollup_mobile = ($this->settings['scrollup_mobile'] ? $this->settings['scrollup_mobile'] : '0');
+						if (!($scrollup_mobile == 0 && ($this->detector->isMobile() || $this->detector->isIphone()))) {
+							
+							//Register scripts and styles
+							add_action('wp_enqueue_scripts', array(&$this, 'register_plugin_scripts'));
+							add_action('wp_enqueue_scripts', array(&$this, 'register_plugin_styles'));
+				
+							//Action links
+							add_filter('plugin_action_links', array(&$this, 'plugin_action_links'), 10, 2);
+				
+							//Start up script
+							add_action('wp_footer', array(&$this, 'plugin_js'));
+						}
+					}
+				
+					public function plugin_action_links($links, $file) {
+						static $current_plugin = '';
+				
+						if (!$current_plugin) {
+							$current_plugin = plugin_basename(__FILE__);
+						}
+				
+						if ($file == $current_plugin) {
+							$settings_link = '<a href="' . get_bloginfo('wpurl') . '/wp-admin/options-general.php?page=smooth_scroll_up">' . __('Settings', 'scrollup') . '</a>';
+							array_unshift($links, $settings_link);
+						}
+				
+						return $links;
+					}
 					
-					//Register scripts and styles
-					add_action('wp_enqueue_scripts', array(&$this, 'register_plugin_scripts'));
-					add_action('wp_enqueue_scripts', array(&$this, 'register_plugin_styles'));
-		
-					//Action links
-					add_filter('plugin_action_links', array(&$this, 'plugin_action_links'), 10, 2);
-		
-					//Start up script
-					add_action('wp_footer', array(&$this, 'plugin_js'));
-				}
-			}
-		
-			public function plugin_action_links($links, $file) {
-				static $current_plugin = '';
-		
-				if (!$current_plugin) {
-					$current_plugin = plugin_basename(__FILE__);
-				}
-		
-				if ($file == $current_plugin) {
-					$settings_link = '<a href="' . get_bloginfo('wpurl') . '/wp-admin/options-general.php?page=smooth_scroll_up">' . __('Settings', 'scrollup') . '</a>';
-					array_unshift($links, $settings_link);
-				}
-		
-				return $links;
-			}
-			
-			function plugin_js() {
+					function plugin_js() {
+						
+						$scrollup_show = ($this->settings['scrollup_show'] ? $this->settings['scrollup_show'] : '0');
 				
-				$scrollup_show = ($this->settings['scrollup_show'] ? $this->settings['scrollup_show'] : '0');
-		
-				if ($scrollup_show == "1" || ($scrollup_show == "0" && !(is_home() || is_front_page()))) {
-					
-					//Fetch options
-					$scrollup_type = ($this->settings['scrollup_type'] ? $this->settings['scrollup_type'] : 'tab');
-					$scrollup_position = ($this->settings['scrollup_position'] ? $this->settings['scrollup_position'] : 'right');
-					$scrollup_text = ($this->settings['scrollup_text'] ? html_entity_decode($this->settings['scrollup_text']) : 'Scroll to top');
-					$scrollup_distance = ($this->settings['scrollup_distance'] ? html_entity_decode($this->settings['scrollup_distance']) : '300');
-					$scrollup_animation = ($this->settings['scrollup_animation'] ? $this->settings['scrollup_animation'] : 'fade');
-					$scrollup_attr = ($this->settings['scrollup_attr'] ? html_entity_decode($this->settings['scrollup_attr']) : '');
-					
-					//Scroll up type class
-					$scrollup_type_class = 'scrollup-tab';
-					if ($scrollup_type == 'link') {
-						$scrollup_type_class = 'scrollup-link';
+						if ($scrollup_show == "1" || ($scrollup_show == "0" && !(is_home() || is_front_page()))) {
+							
+							//Fetch options
+							$scrollup_type = ($this->settings['scrollup_type'] ? $this->settings['scrollup_type'] : 'tab');
+							$scrollup_position = ($this->settings['scrollup_position'] ? $this->settings['scrollup_position'] : 'right');
+							$scrollup_text = ($this->settings['scrollup_text'] ? html_entity_decode($this->settings['scrollup_text']) : 'Scroll to top');
+							$scrollup_distance = ($this->settings['scrollup_distance'] ? html_entity_decode($this->settings['scrollup_distance']) : '300');
+							$scrollup_animation = ($this->settings['scrollup_animation'] ? $this->settings['scrollup_animation'] : 'fade');
+							$scrollup_attr = ($this->settings['scrollup_attr'] ? html_entity_decode($this->settings['scrollup_attr']) : '');
+							
+							//Scroll up type class
+							$scrollup_type_class = 'scrollup-tab';
+							if ($scrollup_type == 'link') {
+								$scrollup_type_class = 'scrollup-link';
+							}
+							else if ($scrollup_type == 'pill') {
+								$scrollup_type_class = 'scrollup-pill';
+							}
+							else if ($scrollup_type == 'image') {
+								$scrollup_type_class = 'scrollup-image';
+								$scrollup_text = "";
+							}
+							else {
+								$scrollup_type_class = 'scrollup-tab';
+							}
+				
+							//Scroll up position class
+							$scrollup_position_class = 'scrollup-left';
+							if ($scrollup_position == 'center') {
+								$scrollup_position_class = 'scrollup-center';
+							}
+							else if ($scrollup_position == 'right') {
+								$scrollup_position_class = 'scrollup-right';
+							}
+							else {
+								$scrollup_position_class = 'scrollup-left';
+							}
+				
+							//Creation script
+							echo '<script> var $nocnflct = jQuery.noConflict();
+							$nocnflct(function () {
+								$nocnflct.scrollUp({
+								scrollName: \'scrollUp\', // Element ID
+								scrollClass: \'scrollUp '.$scrollup_type_class.' '.$scrollup_position_class.'\', // Element Class
+								scrollDistance: ' . $scrollup_distance . ', // Distance from top/bottom before showing element (px)
+								scrollFrom: \'top\', // top or bottom
+								scrollSpeed: 300, // Speed back to top (ms)
+								easingType: \'linear\', // Scroll to top easing (see http://easings.net/)
+								animation: \'' . $scrollup_animation . '\', // Fade, slide, none
+								animationInSpeed: 200, // Animation in speed (ms)
+								animationOutSpeed: 200, // Animation out speed (ms)
+								scrollText: \'' . $scrollup_text . '\', // Text for element, can contain HTML
+								scrollTitle: false, // Set a custom <a> title if required. Defaults to scrollText
+								scrollImg: false, // Set true to use image
+								activeOverlay: false, // Set CSS color to display scrollUp active point
+								zIndex: 2147483647 // Z-Index for the overlay
+								});
+							});';
+				
+							//Onclick function
+							if ($scrollup_attr != '')
+								echo '
+								$nocnflct( document ).ready(function() {   
+									$nocnflct(\'#scrollUp\').attr(\'onclick\', \'' . $scrollup_attr . '\');
+								});
+								';
+				
+							echo '</script>';
+						}
 					}
-					else if ($scrollup_type == 'pill') {
-						$scrollup_type_class = 'scrollup-pill';
+				
+					/* -------------------------------------------------- */
+					/* Registers and enqueues scripts.
+					  /* -------------------------------------------------- */
+				
+					public function register_plugin_scripts() {
+				
+						wp_enqueue_script('jquery');
+				
+						wp_register_script('scrollup-js', plugins_url('js/jquery.scrollUp.min.js', __FILE__ ), '', '', true);
+						wp_enqueue_script('scrollup-js');
 					}
-					else if ($scrollup_type == 'image') {
-						$scrollup_type_class = 'scrollup-image';
-						$scrollup_text = "";
+				
+					/* -------------------------------------------------- */
+					/* Registers and enqueues styles.
+					  /* -------------------------------------------------- */
+				
+					public function register_plugin_styles() {
+				
+						wp_register_style('scrollup-css', plugins_url('/css/scrollup.css' , __FILE__));
+						wp_enqueue_style('scrollup-css');
 					}
-					else {
-						$scrollup_type_class = 'scrollup-tab';
-					}
-		
-					//Scroll up position class
-					$scrollup_position_class = 'scrollup-left';
-					if ($scrollup_position == 'center') {
-						$scrollup_position_class = 'scrollup-center';
-					}
-					else if ($scrollup_position == 'right') {
-						$scrollup_position_class = 'scrollup-right';
-					}
-					else {
-						$scrollup_position_class = 'scrollup-left';
-					}
-		
-					//Creation script
-					echo '<script> var $nocnflct = jQuery.noConflict();
-					$nocnflct(function () {
-						$nocnflct.scrollUp({
-						scrollName: \'scrollUp\', // Element ID
-						scrollClass: \'scrollUp '.$scrollup_type_class.' '.$scrollup_position_class.'\', // Element Class
-						scrollDistance: ' . $scrollup_distance . ', // Distance from top/bottom before showing element (px)
-						scrollFrom: \'top\', // top or bottom
-						scrollSpeed: 300, // Speed back to top (ms)
-						easingType: \'linear\', // Scroll to top easing (see http://easings.net/)
-						animation: \'' . $scrollup_animation . '\', // Fade, slide, none
-						animationInSpeed: 200, // Animation in speed (ms)
-						animationOutSpeed: 200, // Animation out speed (ms)
-						scrollText: \'' . $scrollup_text . '\', // Text for element, can contain HTML
-						scrollTitle: false, // Set a custom <a> title if required. Defaults to scrollText
-						scrollImg: false, // Set true to use image
-						activeOverlay: false, // Set CSS color to display scrollUp active point
-						zIndex: 2147483647 // Z-Index for the overlay
-						});
-					});';
-		
-					//Onclick function
-					if ($scrollup_attr != '')
-						echo '
-						$nocnflct( document ).ready(function() {   
-							$nocnflct(\'#scrollUp\').attr(\'onclick\', \'' . $scrollup_attr . '\');
-						});
-						';
-		
-					echo '</script>';
+				
 				}
+				
+				new ScrollUp();
 			}
-		
-			/* -------------------------------------------------- */
-			/* Registers and enqueues scripts.
-			  /* -------------------------------------------------- */
-		
-			public function register_plugin_scripts() {
-		
-				wp_enqueue_script('jquery');
-		
-				wp_register_script('scrollup-js', plugins_url('js/jquery.scrollUp.min.js', __FILE__ ), '', '', true);
-				wp_enqueue_script('scrollup-js');
-			}
-		
-			/* -------------------------------------------------- */
-			/* Registers and enqueues styles.
-			  /* -------------------------------------------------- */
-		
-			public function register_plugin_styles() {
-		
-				wp_register_style('scrollup-css', plugins_url('/css/scrollup.css' , __FILE__));
-				wp_enqueue_style('scrollup-css');
-			}
-		
 		}
-		
-		new ScrollUp();
+		add_action( 'init', 'mp_create_scroll_up_class' );
+	
 	}
 }
-add_action( 'init', 'mp_create_scroll_up_class' );
+add_action('plugins_loaded', 'mp_smooth_scroll_up_include_files', 9);
