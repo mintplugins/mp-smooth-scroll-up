@@ -1,4 +1,4 @@
-=== Smooth Scroll Up ===
+=== MP Smooth Scroll Up ===
 Plugin Name: Smooth Scroll Up
 Plugin URI: http://wordpress.org/extend/plugins/smooth-scroll-up/
 Author URI: http://www.kouratoras.gr
@@ -7,8 +7,8 @@ Contributors: kouratoras
 Tags: back to top, scroll to top, scroll, scroll top, scroll back to top, scroll up, arrow, link to top, back to top, smooth scroll, top, up, back, navigation
 Requires at least: 3.2
 Tested up to: 4.1.1
-Stable tag: 0.8.9
-Version: 0.8.9
+Stable tag: 1.0.0.0
+Version: 1.0.0.0
 License: GPLv2 or later
 
 Smooth Scroll Up is a lightweight plugin that creates a customizable "Scroll to top / Back to top" feature in any post/page of your WordPress website.
@@ -16,6 +16,8 @@ Smooth Scroll Up is a lightweight plugin that creates a customizable "Scroll to 
 == Description ==
 
 Smooth Scroll Up is a lightweight plugin that creates a customizable "Scroll to top / Back to top" feature in any post/page of your WordPress website.
+
+This is a fork from Version 0.8.9 of the Smooth Scroll Up Plugin on WordPress.org
 
 = Features =
 * Choose from different scroll up element types (text link, pill, tab, image)
@@ -71,6 +73,10 @@ Since version 0.8.3, we redeveloped the whole options page in order to be compat
 2. Smooth Scroll Up in action
 
 == Changelog ==
+
+= 1.0.0.0 = April 4, 2015
+* First MP Release
+* Changed references for wp_enqueue_scripts to be agnostic (use __FILE__ ).
 
 = 0.8.9 =
 * Fixed capabilities
